@@ -70,6 +70,3 @@ The script prints dataset counts and the complete probability table, then writes
 
 Suggested speaking notes:
 “Our prior probability is one half because the dataset has equal numbers of positive and negative reviews. Bayes’ theorem updates that starting probability using the presence of a keyword. Of 3,552 reviews containing excellent, 2,868 are positive, giving a posterior of about 80.74 percent. We ask the same positive-sentiment question for awful, where the result is about 9.82 percent. This shows that words provide useful evidence, although context such as negation can change their meaning.”
-
-## Reproducibility
-Dataset CSV SHA-256: `dfc447764f82be365fa9c2beef4e8df89d3919e3da95f5088004797d79695aa2`
