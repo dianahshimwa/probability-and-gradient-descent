@@ -61,12 +61,5 @@ python3 part2_bayes.py "IMDB Dataset.csv" --output keyword_probabilities.csv
 
 The script prints dataset counts and the complete probability table, then writes the results CSV. The notebook provides the same analysis with explanatory cells. Set `DATASET` in its first code cell if needed. No third-party packages are required by the analysis script; a Jupyter environment is needed to open and run the notebook.
 
-## Presentation walkthrough (about 2–3 minutes)
-1. State the question and explain why only the positive posterior is calculated.
-2. Introduce the six keywords and the review-level counting rule.
-3. Explain prior, likelihood, marginal, and posterior using “excellent.”
-4. Run the code and show the table. Compare “wonderful” with “awful.”
-5. Close with the negation limitation and clarify that this is not a complete sentiment classifier.
-
 Suggested speaking notes:
 “Our prior probability is one half because the dataset has equal numbers of positive and negative reviews. Bayes’ theorem updates that starting probability using the presence of a keyword. Of 3,552 reviews containing excellent, 2,868 are positive, giving a posterior of about 80.74 percent. We ask the same positive-sentiment question for awful, where the result is about 9.82 percent. This shows that words provide useful evidence, although context such as negation can change their meaning.”
