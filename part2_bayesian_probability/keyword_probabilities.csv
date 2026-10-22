@@ -1,0 +1,7 @@
+keyword,selection,reviews_with_keyword,positive_reviews_with_keyword,prior,likelihood,marginal,posterior
+excellent,Expected positive,3552,2868,0.5,0.11472,0.07104,0.8074324324324323
+great,Expected positive,12576,8477,0.5,0.33908,0.25152,0.6740617048346055
+wonderful,Expected positive,2778,2256,0.5,0.09024,0.05556,0.8120950323974082
+awful,Expected negative,2882,283,0.5,0.01132,0.05764,0.09819569743233866
+terrible,Expected negative,2699,382,0.5,0.01528,0.05398,0.14153390144497963
+boring,Expected negative,3052,592,0.5,0.02368,0.06104,0.19397116644823068
