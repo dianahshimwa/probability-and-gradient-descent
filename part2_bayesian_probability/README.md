@@ -9,7 +9,7 @@ We compute **P(Positive | keyword) only**, for every keyword. Negative-indicator
 Source: [IMDb Dataset of 50K Movie Reviews, Kaggle](https://www.kaggle.com/datasets/lakshmi25npathi/imdb-dataset-of-50k-movie-reviews).
 The downloaded CSV contains 50,000 reviews: 25,000 positive and 25,000 negative. All rows are used, including repeated reviews if present; no deduplication or sampling is applied.
 
-Chosen beforehand: excellent, great, wonderful (expected positive); awful, terrible, boring (expected negative). These adjectives express praise, enjoyment, dislike, or dissatisfaction.
+Chosen with team: excellent, great, wonderful (expected positive); awful, terrible, boring (expected negative). These adjectives express praise, enjoyment, dislike, or dissatisfaction.
 
 The implementation uses only the Python standard library: no pandas, NumPy, or machine learning libraries. It decodes HTML entities, removes HTML tags, converts text to lowercase, and extracts whole-word tokens. Each review contributes at most one count per keyword. Thus “great great” counts once, and “greater” does not match “great.” Inflections are not merged. A review may count for more than one keyword.
 
@@ -49,17 +49,3 @@ As a cross-check, 2,868 / 3,552 gives the same posterior. The implementation exp
 The starting probability is 50%. All three expected positive words raise it; all three expected negative words lower it. “Wonderful” has the highest positive posterior among our six choices (81.21%), and “awful” the lowest (9.82%). This supports our keyword expectations in this dataset.
 
 These are empirical conditional probabilities from the complete dataset, not a measured accuracy score on unseen reviews. We do not train or evaluate a full sentiment classifier. Negation (“not wonderful”), sarcasm, and descriptions of an actor or character can break the relationship between one word and the review’s overall label. Dataset balance also affects the prior, so these probabilities need not apply to another review population. We do not combine keyword probabilities or assume keyword independence. No smoothing is used; an unseen keyword has an undefined posterior, which the code reports explicitly.
-
-## Run for your presentation
-1. Download and unzip the dataset from the source above.
-2. Put `IMDB Dataset.csv` beside `part2_bayes.py`, or supply its actual path.
-3. Run:
-
-```sh
-python3 part2_bayes.py "IMDB Dataset.csv" --output keyword_probabilities.csv
-```
-
-The script prints dataset counts and the complete probability table, then writes the results CSV. The notebook provides the same analysis with explanatory cells. Set `DATASET` in its first code cell if needed. No third-party packages are required by the analysis script; a Jupyter environment is needed to open and run the notebook.
-
-Suggested speaking notes:
-“Our prior probability is one half because the dataset has equal numbers of positive and negative reviews. Bayes’ theorem updates that starting probability using the presence of a keyword. Of 3,552 reviews containing excellent, 2,868 are positive, giving a posterior of about 80.74 percent. We ask the same positive-sentiment question for awful, where the result is about 9.82 percent. This shows that words provide useful evidence, although context such as negation can change their meaning.”
