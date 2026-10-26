@@ -35,8 +35,8 @@ This README also serves as our presentation guide. All parts are documented in f
 | Member | GitHub | Part 1 | Part 2 | Part 3 (manual) | Part 4 (code) |
 |---|---|---|---|---|---|
 | Bendou Janna Vitalina Soeur | `@bendoujanna` | ... | ... | Update 1 and derivation | yes |
-| [Member 2 full name] | `@dianahshimwa` | ... | yes | Update 2 | ... |
-| [Member 3 full name] | `@endahiro` | yes | ... | Update 3 | ... |
+| Dianah Shimwa Gasasira | `@dianahshimwa` | ... | yes | Update 2 | ... |
+| Evan Ndahiro | `@endahiro` | yes | ... | Update 3 | ... |
 
 
 ---
