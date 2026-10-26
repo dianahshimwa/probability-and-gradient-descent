@@ -88,12 +88,189 @@ Part 4 needs Python 3.9 or newer, NumPy, SciPy and Matplotlib. It uses no random
 
 ## 6. Part 2: Bayesian probability
 
-*To be completed by the Part 2 owners.* The presentation must include:
+### 6.1 Research question and dataset
 
-- [ ] 2 to 4 positive and 2 to 4 negative keywords, with a justification for each
-- [ ] One chosen posterior, P(Positive | keyword) or P(Negative | keyword), but not both
-- [ ] A table per keyword with prior, likelihood, marginal and posterior
-- [ ] Bayes' theorem implemented in basic Python only (no ML libraries)
+Given that a movie review contains a selected keyword, what is the probability that its sentiment label is positive?
+
+We use the [IMDb Dataset of 50K Movie Reviews](https://www.kaggle.com/datasets/lakshmi25npathi/imdb-dataset-of-50k-movie-reviews), containing 25,000 positive and 25,000 negative reviews.
+
+We calculate **P(Positive | keyword) only** for every keyword, including negative-indicator words. We do not calculate P(Negative | keyword).
+
+Code, notebook, detailed documentation, and results are in [`part2_bayesian_probability/`](part2_bayesian_probability/).
+
+### 6.2 Keyword selection
+
+We selected three expected positive indicators and three expected negative indicators.
+
+| Keyword | Expected sentiment | Justification |
+|---|---|---|
+| excellent | Positive | Expresses strong praise for a film or its elements. |
+| great | Positive | Commonly expresses approval or satisfaction. |
+| wonderful | Positive | Expresses strong enjoyment or admiration. |
+| awful | Negative | Expresses strong dissatisfaction or very poor quality. |
+| terrible | Negative | Commonly criticizes the quality of a film or its elements. |
+| boring | Negative | Indicates a lack of interest or engagement. |
+
+These are initial expectations. The observed review counts determine the probabilities.
+
+### 6.3 Method and implementation
+
+The implementation uses basic Python operations and standard-library modules, including `csv`, `re`, and `html`. No machine learning libraries, pandas, or NumPy are used for Part 2.
+
+We:
+
+1. Read the review text and sentiment label.
+2. Decode HTML entities and remove HTML tags.
+3. Convert text to lowercase and extract whole words.
+4. Count each review at most once per keyword.
+5. Calculate the four probabilities using Bayes’ theorem.
+6. Display the results and save them to `keyword_probabilities.csv`.
+
+For example, “great great” counts as one review containing “great,” while “greater” does not match “great.” A review can contain several selected keywords and contribute once to each.
+
+All 50,000 rows are used without sampling or deduplication.
+
+### 6.4 Bayes’ theorem
+
+Let A mean “the review is positive” and K mean “the review contains the keyword.”
+
+```text
+P(A | K) = P(K | A) × P(A) / P(K)
+```
+
+| Term | Calculation |
+|---|---|
+| Prior: P(A) | Positive reviews / all reviews |
+| Likelihood: P(K given A) | Positive reviews containing keyword / positive reviews |
+| Marginal: P(K) | All reviews containing keyword / all reviews |
+| Posterior: P(A given K) | Likelihood × prior / marginal |
+
+The corresponding Python calculations are:
+
+```python
+prior = positive / total
+likelihood = count["positive"] / positive
+marginal = count["all"] / total
+
+posterior = (
+    likelihood * prior / marginal
+    if marginal
+    else None
+)
+```
+
+An absent keyword has a zero marginal, so its posterior is undefined. The code handles this explicitly rather than dividing by zero.
+
+### 6.5 Results per keyword
+
+Probabilities are rounded to six decimal places.
+
+#### Excellent
+
+| Probability | Calculation | Result |
+|---|---|---:|
+| Prior | 25,000 / 50,000 | 0.500000 |
+| Likelihood | 2,868 / 25,000 | 0.114720 |
+| Marginal | 3,552 / 50,000 | 0.071040 |
+| Positive posterior | (0.114720 × 0.500000) / 0.071040 | 0.807432 |
+
+#### Great
+
+| Probability | Calculation | Result |
+|---|---|---:|
+| Prior | 25,000 / 50,000 | 0.500000 |
+| Likelihood | 8,477 / 25,000 | 0.339080 |
+| Marginal | 12,576 / 50,000 | 0.251520 |
+| Positive posterior | (0.339080 × 0.500000) / 0.251520 | 0.674062 |
+
+#### Wonderful
+
+| Probability | Calculation | Result |
+|---|---|---:|
+| Prior | 25,000 / 50,000 | 0.500000 |
+| Likelihood | 2,256 / 25,000 | 0.090240 |
+| Marginal | 2,778 / 50,000 | 0.055560 |
+| Positive posterior | (0.090240 × 0.500000) / 0.055560 | 0.812095 |
+
+#### Awful
+
+| Probability | Calculation | Result |
+|---|---|---:|
+| Prior | 25,000 / 50,000 | 0.500000 |
+| Likelihood | 283 / 25,000 | 0.011320 |
+| Marginal | 2,882 / 50,000 | 0.057640 |
+| Positive posterior | (0.011320 × 0.500000) / 0.057640 | 0.098196 |
+
+#### Terrible
+
+| Probability | Calculation | Result |
+|---|---|---:|
+| Prior | 25,000 / 50,000 | 0.500000 |
+| Likelihood | 382 / 25,000 | 0.015280 |
+| Marginal | 2,699 / 50,000 | 0.053980 |
+| Positive posterior | (0.015280 × 0.500000) / 0.053980 | 0.141534 |
+
+#### Boring
+
+| Probability | Calculation | Result |
+|---|---|---:|
+| Prior | 25,000 / 50,000 | 0.500000 |
+| Likelihood | 592 / 25,000 | 0.023680 |
+| Marginal | 3,052 / 50,000 | 0.061040 |
+| Positive posterior | (0.023680 × 0.500000) / 0.061040 | 0.193971 |
+
+### 6.6 Worked example and interpretation
+
+For “excellent”:
+
+```text
+P(Positive | excellent)
+    = P(excellent | Positive) × P(Positive) / P(excellent)
+    = (2,868 / 25,000) × (25,000 / 50,000) / (3,552 / 50,000)
+    ≈ 0.807432
+    ≈ 80.74%
+```
+
+Therefore, approximately **80.74% of reviews containing “excellent” are positive**.
+
+This differs from the likelihood: only **11.472% of positive reviews contain “excellent.”** The two probabilities condition on different groups.
+
+| Keyword | P(Positive given keyword) |
+|---|---:|
+| excellent | 80.74% |
+| great | 67.41% |
+| wonderful | 81.21% |
+| awful | 9.82% |
+| terrible | 14.15% |
+| boring | 19.40% |
+
+The prior is 50%. All three expected positive indicators increase the positive posterior above that starting point, while all three expected negative indicators decrease it.
+
+Among our selected words, “wonderful” has the highest positive posterior and “awful” the lowest.
+
+### 6.7 Limitations
+
+These are empirical conditional probabilities from the dataset, not prediction accuracy scores on unseen reviews.
+
+- Negation changes meaning: “not wonderful” still contains “wonderful.”
+- Sarcasm and context can weaken individual keyword indicators.
+- A positive review may describe an “awful” character or event.
+- Another dataset may have different class proportions and keyword usage.
+
+We analyze each keyword separately. We do not combine keyword probabilities, assume keyword independence, or evaluate a complete sentiment classifier.
+
+### 6.8 Running the analysis
+
+Download and unzip the dataset, then place `IMDB Dataset.csv` inside `part2_bayesian_probability/`.
+
+From the repository root:
+
+```bash
+cd part2_bayesian_probability
+python3 bayes.py "IMDB Dataset.csv" --output keyword_probabilities.csv
+```
+
+The program displays the probability table and saves the results CSV.
 
 ## 7. Part 3: Gradient descent by hand
  
