@@ -77,12 +77,174 @@ Part 4 needs Python 3.9 or newer, NumPy, SciPy and Matplotlib. It uses no random
 
 ## 5. Part 1: Probability distributions (EM)
 
-*To be completed by the Part 1 owners.* The presentation must include:
+### 5.1 Research question and dataset
 
-- [ ] EM implemented from scratch (E-step, M-step, log-likelihood convergence check)
-- [ ] Why we should not split the data at the global mean and average each pile (hard versus soft assignment)
-- [ ] The tracking table for iterations 0, 1 and 2 (μ₁, μ₂, σ₁², σ₂², π₁, π₂, log-likelihood)
-- [ ] Live posterior probabilities for a test height given by the coach
+Can the Expectation-Maximization (EM) algorithm estimate two underlying Gaussian height distributions when we combine fathers' and children's heights without providing their labels?
+
+We use the Galton Families dataset, comparing fathers and children as permitted by the assignment. The CSV is included in the repository at `part1_probability_distributions/data/GaltonFamilies.csv`, and all heights are in inches.
+
+| Population | Observations | Mean height |
+|---|---:|---:|
+| Children (sons and daughters) | 934 | 66.75 in |
+| Fathers (one per family) | 205 | 69.32 in |
+| Combined | 1,139 | 67.21 in |
+
+The original dataset repeats each father's height for each of his children. We use `drop_duplicates("family")` so each father contributes only once. We combine all heights into `x` and hide the generation labels during EM fitting. The labels are retained separately in `y_true` for evaluation only.
+
+The from-scratch algorithm is in `em_gmm.py` and the visualization helpers are in `plots.py`. The notebook imports both modules rather than copying their code. EM fitting uses NumPy for numerical calculations and Pandas for data loading and tables; it does not use scikit-learn or SciPy's mixture-model implementation.
+
+### 5.2 Why not split at the global mean?
+
+A simple alternative is to calculate the overall mean, put all heights below it into one pile and all heights above it into another, then calculate each pile's mean. Our notebook implements this baseline in `mean_split(x)`.
+
+| Measure | Lower mean-split pile | Upper mean-split pile |
+|---|---:|---:|
+| Number of observations | 575 | 564 |
+| Mean height | 64.26 in | 70.21 in |
+
+The global mean is 67.21 inches. However, the original populations have 934 children and only 205 fathers, not two equally sized groups. More importantly, their heights overlap: a tall child can be taller than a short father.
+
+A mean split makes a hard assignment: each height belongs entirely to one pile, even if it is close to the cutoff. This discards uncertainty and can distort the estimated group means and variances. EM instead makes soft assignments, allowing each height to contribute to both components according to its estimated membership probabilities. A mean split can be useful as an initial guess, but it is not a reliable way to recover the original populations.
+
+### 5.3 Gaussian mixture model and implementation
+
+We assume the combined heights can be approximated by a two-component, one-dimensional Gaussian Mixture Model (GMM):
+
+$$
+p(x)=\pi_1\mathcal N(x\mid\mu_1,\sigma_1^2)+\pi_2\mathcal N(x\mid\mu_2,\sigma_2^2)
+$$
+
+Each component has a mean ($\mu$), variance ($\sigma^2$), and mixing weight ($\pi$), where $\pi_1+\pi_2=1$.
+
+**Initialization.** `init_params(x, method="quantile")` starts the two means at the 25th and 75th percentiles (64.5 and 70.0 inches), assigns both components the overall variance (12.7241), and sets both mixing weights to 0.5.
+
+**E-step (Expectation).** `e_step(x, p)` calculates each observation's responsibility for each component, using the current parameters:
+
+$$
+r_{ik}=\frac{\pi_k\mathcal N(x_i\mid\mu_k,\sigma_k^2)}{\sum_{j=1}^{2}\pi_j\mathcal N(x_i\mid\mu_j,\sigma_j^2)}
+$$
+
+For each height, the two responsibilities sum to 1. The implementation uses `gaussian_pdf()` and `weighted_densities()` to calculate the numerator and denominator.
+
+**M-step (Maximization).** `m_step(x, r)` uses these responsibilities as fractional weights to update the model:
+
+$$
+N_k=\sum_i r_{ik},\qquad
+\mu_k=\frac{\sum_i r_{ik}x_i}{N_k}
+$$
+
+$$
+\sigma_k^2=\frac{\sum_i r_{ik}(x_i-\mu_k)^2}{N_k},\qquad
+\pi_k=\frac{N_k}{N}
+$$
+
+A small variance floor (`1e-6`) prevents numerical collapse of a component.
+
+**Log-likelihood and convergence.** After every M-step, `log_likelihood(x, p)` measures how well the current mixture explains the observed heights:
+
+$$
+\ell=\sum_{i=1}^{N}\log\left(\sum_{k=1}^{2}\pi_k\mathcal N(x_i\mid\mu_k,\sigma_k^2)\right)
+$$
+
+The `fit_em()` function alternates E-step and M-step, records the parameters and log-likelihood at every iteration, and stops when the absolute change in log-likelihood is below $10^{-6}$, or when it reaches the maximum of 500 iterations. A higher log-likelihood indicates a better fit to the observed heights; it is not a measure of father-versus-child classification accuracy.
+
+| Function | Purpose |
+|---|---|
+| `load_heights()` | Loads child heights and unique father heights; retains labels separately for evaluation |
+| `init_params()` | Initializes means, variances and mixing weights |
+| `gaussian_pdf()` / `weighted_densities()` | Computes component densities and weighted densities |
+| `e_step()` | Calculates posterior responsibilities for every height |
+| `m_step()` | Updates the Gaussian parameters using responsibilities |
+| `log_likelihood()` | Evaluates the fitted mixture after each update |
+| `fit_em()` | Runs EM, tracks iterations and checks convergence |
+| `mean_split()` | Calculates the hard-cut baseline |
+| `classify()` / `print_classification()` | Produces posterior probabilities for a new test height |
+
+### 5.4 Tracking table: initialization and first two iterations
+
+The assignment requires the initial values and the results of the first two complete E/M updates. These are recorded directly in `result.table(3)`:
+
+| Iteration | $\mu_1$ | $\mu_2$ | $\sigma_1^2$ | $\sigma_2^2$ | $\pi_1$ | $\pi_2$ | Log-likelihood |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| 0 (initialization) | 64.5000 | 70.0000 | 12.7241 | 12.7241 | 0.5000 | 0.5000 | -3119.8222 |
+| 1 | 65.2205 | 69.2054 | 9.0603 | 8.4468 | 0.5011 | 0.4989 | -3057.9135 |
+| 2 | 65.1609 | 69.2600 | 8.9420 | 8.1040 | 0.5005 | 0.4995 | -3056.9719 |
+
+The log-likelihood improves substantially after the first iteration, from -3119.8222 to -3057.9135. Subsequent improvements become smaller as the parameters stabilize.
+
+### 5.5 Final fitted parameters
+
+With quantile initialization, the algorithm reports convergence after 319 iterations:
+
+| Parameter | Component 1 (shorter) | Component 2 (taller) |
+|---|---:|---:|
+| Mean ($\mu$) | 64.1772 in | 69.5186 in |
+| Variance ($\sigma^2$) | 5.3024 | 6.0410 |
+| Mixing weight ($\pi$) | 0.4325 | 0.5675 |
+
+Final log-likelihood: -3046.9895.
+
+The notebook also plots the raw heights, the mean-split comparison, the log-likelihood convergence history, and the final fitted Gaussian mixture using functions from `plots.py`.
+
+### 5.6 Live classification demo
+
+To classify a height supplied during the presentation, edit these two values in the notebook's live-demo cell and rerun it:
+
+```python
+TEST_HEIGHT = 68.0  # replace with the coach's height
+UNIT = "in"         # use "cm" if the height is given in centimeters
+
+post = print_classification(TEST_HEIGHT, result.params, UNIT)
+```
+
+`classify()` converts centimeters to inches when needed, then applies the trained model's E-step to a single new height. The function prints each component's weighted density, their sum (the evidence), the two posterior probabilities, and the most likely component. The notebook also plots the test height against the fitted distributions.
+
+For the example 68 inches, the fitted model gives:
+
+| Component | Posterior probability |
+|---|---:|
+| Component 1 (shorter) | 19.88% |
+| Component 2 (taller) | 80.12% |
+
+The model therefore assigns this example to component 2. The code labels the components Child and Father according to their intended interpretation, but these outputs are probabilities of the learned Gaussian components, not verified probabilities of someone's actual generation.
+
+### 5.7 Evaluation and limitations
+
+The notebook uses the hidden generation labels only after training to assess how closely the learned components match fathers and children.
+
+| Method | Accuracy against generation labels |
+|---|---:|
+| Global-mean hard split | 60.8% |
+| EM component assignment | 56.5% |
+
+These percentages are not the EM optimization objective, and they must be interpreted cautiously because the data contain many more children than fathers. EM maximizes the likelihood of the heights, not the accuracy of father-versus-child classification.
+
+The fitted components capture shorter and taller height patterns, but do not perfectly recover the original generations. One possible reason is that the children's heights include both sons and daughters, whose height distributions differ; fathers' and sons' heights also overlap strongly. Thus, representing each generation with one Gaussian is an approximation.
+
+As implementation checks, the notebook compares quantile and mean-split initializations, checks that log-likelihood does not decrease during fitting, and tests EM on synthetic data with known Gaussian parameters. These checks support the implementation without proving that the recovered components correspond to the true generation labels.
+
+### 5.8 Running Part 1
+
+**In Colab.** Open [`part1_em_algorithm.ipynb` in Colab](https://colab.research.google.com/github/dianahshimwa/probability-and-gradient-descent/blob/main/part1_probability_distributions/part1_em_algorithm.ipynb) and choose *Runtime → Run all*. The notebook:
+
+1. Clones this repository and moves into `part1_probability_distributions/`, so it uses the same `em_gmm.py`, `plots.py` and `data/GaltonFamilies.csv` as the repository.
+2. Loads the heights, runs the mean-split comparison, and fits the EM model.
+3. Displays the required tracking table, convergence results and plots.
+4. Runs the live classification cell using the supplied `TEST_HEIGHT` and `UNIT`.
+
+An internet connection is needed only for the clone in step 1.
+
+**Locally.** From the repository root:
+
+```bash
+cd part1_probability_distributions
+pip install -r requirements.txt
+jupyter notebook part1_em_algorithm.ipynb
+```
+
+For a quick check without Jupyter, run `python3 demo.py 70 --table` (or `python3 demo.py 178 --unit cm`). It prints the tracking table and the posterior probabilities for the given height.
+
+Dependencies include NumPy, Pandas, Matplotlib, and IPython/Jupyter. The core EM implementation does not depend on a prebuilt Gaussian mixture fitting library.
 
 ---
 
